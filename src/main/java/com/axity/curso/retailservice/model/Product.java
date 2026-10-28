@@ -35,6 +35,9 @@ public class Product {
  
     @Column(length = 50)
     private String category;
+
+    @Column(nullable = false)
+    private Boolean deleted = false;
  
     public Product() {
     }
@@ -94,6 +97,22 @@ public class Product {
     public void setCategory(String category) {
         this.category = category;
     }
+
+    public String getSku() {
+        return sku;
+    }
+
+    public void setSku(String sku) {
+        this.sku = sku;
+    }
+
+    public Boolean getDeleted() {
+    return deleted;
+}
+
+public void setDeleted(Boolean deleted) {
+    this.deleted = deleted;
+}
  
     @Override
     public boolean equals(Object o) {
