@@ -1,79 +1,91 @@
-# 🛒 Retail Order Service
+# 🛍️ Retail Service API
 
-Microservicio backend centralizado diseñado para el sector del comercio minorista (retail). Este sistema gestiona de manera eficiente el catálogo de productos y procesa pedidos de compra de forma transaccional, equilibrando operaciones sincrónicas (críticas) y tareas asincrónicas en segundo plano (notificaciones, auditorías).
+Microservicio backend desarrollado con **Spring Boot** para la gestión integral de un sistema de comercio minorista (Retail), implementando buenas prácticas de arquitectura, manejo global de excepciones, persistencia con JPA/Hibernate, documentación interactiva y procesamiento asíncrono en segundo plano.
 
-## 🚀 Arquitectura y Tecnologías
 
-El proyecto está construido bajo una **Arquitectura por Capas** (Layered Architecture) siguiendo los principios SOLID y patrones de código limpio, garantizando un bajo acoplamiento mediante inyección de dependencias y el uso intensivo de DTOs (`records`).
+## 🚀 Tecnologías y Herramientas
+* **Java 17+**
+* **Spring Boot** (Web, Data JPA, Validation)
+* **H2 Database** (Base de datos en memoria)
+* **Lombok** (Reducción de código boilerplate)
+* **MapStruct** (Mapeo eficiente entre Entidades y DTOs)
+* **Springdoc OpenAPI / Swagger UI** (Documentación interactiva)
+* **Spring Task (`@Async`)** (Procesamiento asíncrono no bloqueante)
 
-*   **Lenguaje:** Java 21 (LTS)
-*   **Framework Core:** Spring Boot 3.x
-*   **Exposición REST:** Spring Web
-*   **Persistencia:** Spring Data JPA / Hibernate
-*   **Base de Datos:** H2 Database (En memoria, perfil de desarrollo)
-*   **Mapeo de Datos:** MapStruct
-*   **Boilerplate:** Lombok
-*   **Validaciones:** Jakarta Bean Validation
-*   **Gestor de Dependencias:** Maven
 
-## 📋 Características Principales
+## 📂 Arquitectura del Proyecto
 
-1.  **Catálogo de Productos:** CRUD completo para gestionar inventario, precios y SKUs. Implementa *Soft Delete* (borrado lógico) para preservar la integridad de datos históricos.
-2.  **Procesamiento de Pedidos:** Gestión transaccional de órdenes de compra con asociación relacional 1:N (Pedido-Ítems) y N:1 (Ítem-Producto).
-3.  **Flujos Sincrónicos vs Asincrónicos:** 
-    *   *Sincrónico:* Verificación de inventario, cálculo de totales, creación de orden.
-    *   *Asincrónico:* Eventos no bloqueantes como notificaciones de compra y registros de auditoría de almacén.
-4.  **Manejo Global de Excepciones:** Intercepción centralizada (`@RestControllerAdvice`) que transforma excepciones de dominio (`StockInsuficienteException`, `RecursoNoEncontradoException`) en respuestas HTTP estandarizadas y semánticas (RFC 7807 / Problem Detail).
+El proyecto sigue una estructura en capas desacoplada:
 
-## 📂 Estructura del Proyecto
+```text
+src/main/java/com/axity/curso/retailservice/
+├── controller/       # Endpoints REST (Products, PurchaseOrders)
+├── service/          # Lógica de negocio (Síncrona y @Async)
+├── repository/       # Interfaces de Spring Data JPA
+├── model/            # Entidades JPA (Product, PurchaseOrder)
+├── dto/              # Objetos de Transferencia de Datos (DTOs)
+├── mapper/           # Interfaces de conversión MapStruct
+└── exception/        # Manejador global de errores y excepciones
+```
 
-El código está modularizado en los siguientes paquetes principales dentro de `src/main/java/com/axity/curso/retailservice`:
+## ✨ Características Principales
 
-*   `/controller`: Endpoints REST y exposición de la API.
-*   `/dto`: Objetos inmutables de transferencia de datos (`records`) para Request y Response.
-*   `/exception`: Clases de error de negocio y manejador global de excepciones.
-*   `/model`: Entidades JPA de dominio (`Product`, `PurchaseOrder`, `OrderItem`).
-*   `/repository`: Interfaces de Spring Data JPA.
-*   `/service`: Lógica de negocio (interfaces y sus implementaciones en `/impl`), con separación de flujos sincrónicos y asincrónicos.
+**1. CRUD Completo con Borrado Lógico:**
 
-## 🛠️ Instalación y Ejecución Local
+* Operaciones completas para ```Product``` y ```PurchaseOrder```.
 
-### Prerrequisitos
-*   [JDK 21](https://adoptium.net/) instalado.
-*   No es necesario instalar Maven, el proyecto incluye el *Maven Wrapper* (`mvnw`).
+*  Soporte para actualización total (```PUT```), actualización parcial (```PATCH```), borrado lógico (```soft delete``` mediante bandera) y borrado físico (```hard delete```).
 
-### Pasos para iniciar
+**2. Database Seeding Automático:**
 
-1. Clona este repositorio:
-   ```bash
-   git clone <url-del-repositorio>
-   cd retailservice
-   ```
+*  Inicialización de datos de prueba al arrancar la aplicación mediante ```CommandLineRunner```, poblando la base de    datos con registros dinámicos de productos y órdenes.
 
-2. Compila e inicia la aplicación usando el wrapper de Maven:
-   ```bash
-   # En Linux/macOS
-   ./mvnw spring-boot:run
+**3. Manejo Global de Excepciones:**
 
-   # En Windows
-   mvnw.cmd spring-boot:run
-   ```
+* Centralizado mediante ```@RestControllerAdvice```.
 
-3. El servicio se levantará por defecto en `http://localhost:8080`.
+* Excepciones personalizadas (```ResourceNotFoundException```, etc.) que transforman errores en respuestas HTTP estructuradas (```404```, ```400```, ```409```) con formato JSON limpio (```timestamp```, ```status```, ```error```, ```message```, ```path```).
 
-## 🗄️ Base de Datos H2 (Consola Web)
+**4. Procesamiento Asíncrono (```@Async```):**
 
-El proyecto utiliza una base de datos en memoria que se recrea en cada ejecución. Puedes visualizar las tablas y hacer consultas SQL directamente desde tu navegador.
+* Hilos secundarios configurados para delegar tareas pesadas o de auditoría (envío de correos simulados, registros de auditoría de productos y órdenes) sin bloquear el hilo principal de las respuestas HTTP.
 
-*   **URL:** [http://localhost:8080/h2-console](http://localhost:8080/h2-console)
-*   **JDBC URL:** `jdbc:h2:mem:retaildb`
-*   **Usuario:** `sa`
-*   **Contraseña:** *(dejar en blanco)*
+**5. Documentación Interactiva (Swagger):**
 
-## 🧪 Pruebas (Testing)
+* Interfaz gráfica integrada para probar todos los endpoints en tiempo real.
 
-El ecosistema cuenta con pruebas unitarias y de integración que validan los flujos críticos. Para ejecutar la suite de pruebas:
+## ⚙️ Cómo Ejecutar el Proyecto Localmente
+
+**1. Clonar o abrir el repositorio en tu entorno (VS Code):**
 
 ```bash
-./mvnw test
+cd retailservice
+```
+
+**2. Compilar y ejecutar usando Maven:**
+```bash
+mvn clean spring-boot:run
+```
+
+**3. Acceder a la aplicación:**
+
+* La API corre en `http://localhost:8080`
+* Swagger UI: Explora y prueba los endpoints en: `http://localhost:8080/swagger-ui/index.html`
+* Consola H@ (DDB): `http://localhost:8080/h2-console`
+   * _JDBC URL:_ `jdbc:h2:mem:retaildb`
+   * _User:_ `sa`
+   * _Password: (en blanco)_
+
+##  🛡️ Códigos de Respuesta y Manejo de Errores
+
+La API responde estandarizadamente ante fallos de negocio o recursos no encontrados:
+
+```bash
+{
+  "timestamp": "2026-10-29T01:00:00.000",
+  "status": 404,
+  "error": "Not Found",
+  "message": "Orden no encontrada o eliminada con ID: 999",
+  "path": "/api/orders/999"
+}
 ```
