@@ -1,91 +1,106 @@
 # 🛍️ Retail Service API
 
-Microservicio backend desarrollado con **Spring Boot** para la gestión integral de un sistema de comercio minorista (Retail), implementando buenas prácticas de arquitectura, manejo global de excepciones, persistencia con JPA/Hibernate, documentación interactiva y procesamiento asíncrono en segundo plano.
-
+Microservicio backend desarrollado con **Spring Boot** para la gestión integral de un sistema de comercio minorista (Retail). Implementa buenas prácticas de arquitectura, manejo de excepciones, procesamiento asíncrono en segundo plano, y está diseñado para ser desplegado en entornos Cloud Native mediante **Docker** y **Kubernetes**.
 
 ## 🚀 Tecnologías y Herramientas
-* **Java 17+**
-* **Spring Boot** (Web, Data JPA, Validation)
-* **H2 Database** (Base de datos en memoria)
-* **Lombok** (Reducción de código boilerplate)
-* **MapStruct** (Mapeo eficiente entre Entidades y DTOs)
-* **Springdoc OpenAPI / Swagger UI** (Documentación interactiva)
-* **Spring Task (`@Async`)** (Procesamiento asíncrono no bloqueante)
 
+* **Java 21** (Compatible con Java 17)
+
+* **Spring Boot** (Web, Data JPA, Validation)
+
+* **H2 Database** (Base de datos embebida con persistencia en volumen)
+
+* **MapStruct & Lombok** (Mapeo eficiente y reducción de código boilerplate)
+
+* **Springdoc OpenAPI** (Documentación interactiva con Swagger UI)
+
+* **Docker & Docker Compose** (Contenerización)
+
+* **Kubernetes** (Orquestación local con Docker Desktop)
 
 ## 📂 Arquitectura del Proyecto
 
-El proyecto sigue una estructura en capas desacoplada:
+El proyecto sigue una estructura en capas y separa la infraestructura del código fuente:
 
-```text
-src/main/java/com/axity/curso/retailservice/
-├── controller/       # Endpoints REST (Products, PurchaseOrders)
-├── service/          # Lógica de negocio (Síncrona y @Async)
-├── repository/       # Interfaces de Spring Data JPA
-├── model/            # Entidades JPA (Product, PurchaseOrder)
-├── dto/              # Objetos de Transferencia de Datos (DTOs)
-├── mapper/           # Interfaces de conversión MapStruct
-└── exception/        # Manejador global de errores y excepciones
+```
+retailservice/
+├── src/main/java/.../retailservice/
+│   ├── controller/       # Endpoints REST
+│   ├── service/          # Lógica de negocio (Síncrona y @Async)
+│   ├── repository/       # Interfaces Spring Data JPA
+│   └── exception/        # Manejador global de errores
+├── k8s/                  # Manifiestos de Kubernetes
+│   ├── config-secret.yaml # ConfigMaps y Secrets
+│   ├── pvc.yaml           # Volumen persistente (PersistentVolumeClaim)
+│   ├── deployment.yaml    # Declaración de Pods y réplicas
+│   └── service.yaml       # Balanceador de carga
+├── Dockerfile            # Construcción de la imagen
+├── docker-compose.yml    # Orquestación ágil para entorno local
+└── pom.xml
+
 ```
 
 ## ✨ Características Principales
 
-**1. CRUD Completo con Borrado Lógico:**
+1. **CRUD Completo y Resiliente**
 
-* Operaciones completas para ```Product``` y ```PurchaseOrder```.
+   * Operaciones para `Product` y `PurchaseOrder` con soporte de *soft delete* y *hard delete*.
 
-*  Soporte para actualización total (```PUT```), actualización parcial (```PATCH```), borrado lógico (```soft delete``` mediante bandera) y borrado físico (```hard delete```).
+2. **Procesamiento Asíncrono (`@Async`)**
 
-**2. Database Seeding Automático:**
+   * Tareas secundarias (auditoría, notificaciones) delegadas a hilos independientes para no bloquear el flujo HTTP principal.
 
-*  Inicialización de datos de prueba al arrancar la aplicación mediante ```CommandLineRunner```, poblando la base de    datos con registros dinámicos de productos y órdenes.
+3. **Manejo Global de Excepciones**
 
-**3. Manejo Global de Excepciones:**
+   * Respuestas estructuradas JSON con códigos `400`, `404`, `409` gestionadas por `@RestControllerAdvice`.
 
-* Centralizado mediante ```@RestControllerAdvice```.
+4. **Infraestructura Cloud Native**
 
-* Excepciones personalizadas (```ResourceNotFoundException```, etc.) que transforman errores en respuestas HTTP estructuradas (```404```, ```400```, ```409```) con formato JSON limpio (```timestamp```, ```status```, ```error```, ```message```, ```path```).
+   * Despliegue en contenedores, inyección de variables de entorno mediante `ConfigMap`/`Secret`, y persistencia de base de datos a través de volúmenes compartidos.
 
-**4. Procesamiento Asíncrono (```@Async```):**
+## ⚙️ Cómo Ejecutar el Proyecto
 
-* Hilos secundarios configurados para delegar tareas pesadas o de auditoría (envío de correos simulados, registros de auditoría de productos y órdenes) sin bloquear el hilo principal de las respuestas HTTP.
+El microservicio está configurado para operar internamente en el puerto **`8090`**. Puedes levantarlo de 3 maneras distintas:
 
-**5. Documentación Interactiva (Swagger):**
+### Opción 1: Desarrollo Local (Maven)
 
-* Interfaz gráfica integrada para probar todos los endpoints en tiempo real.
+Ideal para programar y hacer pruebas rápidas.
 
-## ⚙️ Cómo Ejecutar el Proyecto Localmente
-
-**1. Clonar o abrir el repositorio en tu entorno (VS Code):**
-
-```bash
-cd retailservice
 ```
-
-**2. Compilar y ejecutar usando Maven:**
-```bash
 mvn clean spring-boot:run
+
 ```
 
-**3. Acceder a la aplicación:**
+* **Swagger UI:** `http://localhost:8090/swagger-ui/index.html`
 
-* La API corre en `http://localhost:8080`
-* Swagger UI: Explora y prueba los endpoints en: `http://localhost:8080/swagger-ui/index.html`
-* Consola H@ (DDB): `http://localhost:8080/h2-console`
-   * _JDBC URL:_ `jdbc:h2:mem:retaildb`
-   * _User:_ `sa`
-   * _Password: (en blanco)_
+* **H2 Console:** `http://localhost:8090/h2-console` *(JDBC: jdbc:h2:mem:testdb)*
 
-##  🛡️ Códigos de Respuesta y Manejo de Errores
+### Opción 2: Docker Compose
 
-La API responde estandarizadamente ante fallos de negocio o recursos no encontrados:
+Ideal para levantar todo el entorno con un solo comando.
 
-```bash
-{
-  "timestamp": "2026-10-29T01:00:00.000",
-  "status": 404,
-  "error": "Not Found",
-  "message": "Orden no encontrada o eliminada con ID: 999",
-  "path": "/api/orders/999"
-}
 ```
+# Construye la imagen y levanta el contenedor en segundo plano
+docker-compose up -d --build
+
+```
+
+* **Swagger UI:** `http://localhost:8090/swagger-ui/index.html`
+
+### Opción 3: Kubernetes (Docker Desktop)
+
+Ideal para simular un entorno de producción (QA/Ops).
+
+```
+# 1. Construir la imagen localmente
+docker build -t retail-api-local:v1.0 .
+
+# 2. Aplicar los manifiestos en orden
+kubectl apply -f k8s/config-secret.yaml
+kubectl apply -f k8s/pvc.yaml
+kubectl apply -f k8s/deployment.yaml
+kubectl apply -f k8s/service.yaml
+
+```
+
+* **Swagger UI:** `http://localhost/swagger-ui/index.html` *(El servicio LoadBalancer redirige el puerto externo 80 hacia el puerto 8080 interno del pod).*
