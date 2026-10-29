@@ -14,19 +14,43 @@ import java.util.List;
 @RequiredArgsConstructor
 public class PurchaseOrderController {
 
-    private final PurchaseOrderService orderService;
+    private final PurchaseOrderService purchaseOrderService;
 
-    // Endpoint GET: http://localhost:8080/api/orders
     @GetMapping
     public ResponseEntity<List<PurchaseOrderDTO>> getAllOrders() {
-        List<PurchaseOrderDTO> orders = orderService.getAllOrders();
-        return ResponseEntity.ok(orders);
+        return ResponseEntity.ok(purchaseOrderService.getAllOrders());
     }
 
-    // Endpoint POST: http://localhost:8080/api/orders
+    @GetMapping("/{id}")
+    public ResponseEntity<PurchaseOrderDTO> getOrderById(@PathVariable Long id) {
+        return ResponseEntity.ok(purchaseOrderService.getOrderById(id));
+    }
+
     @PostMapping
     public ResponseEntity<PurchaseOrderDTO> createOrder(@RequestBody PurchaseOrderDTO orderDTO) {
-        PurchaseOrderDTO createdOrder = orderService.createOrder(orderDTO);
+        PurchaseOrderDTO createdOrder = purchaseOrderService.createOrder(orderDTO);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdOrder);
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<PurchaseOrderDTO> updateOrder(@PathVariable Long id, @RequestBody PurchaseOrderDTO orderDTO) {
+        return ResponseEntity.ok(purchaseOrderService.updateOrder(id, orderDTO));
+    }
+
+    @PatchMapping("/{id}")
+    public ResponseEntity<PurchaseOrderDTO> patchOrder(@PathVariable Long id, @RequestBody PurchaseOrderDTO orderDTO) {
+        return ResponseEntity.ok(purchaseOrderService.patchOrder(id, orderDTO));
+    }
+
+    @DeleteMapping("/{id}/soft")
+    public ResponseEntity<Void> softDeleteOrder(@PathVariable Long id) {
+        purchaseOrderService.softDeleteOrder(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/{id}/hard")
+    public ResponseEntity<Void> hardDeleteOrder(@PathVariable Long id) {
+        purchaseOrderService.hardDeleteOrder(id);
+        return ResponseEntity.noContent().build();
     }
 }
