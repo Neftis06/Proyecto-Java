@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  retail-api:
+    build: .
+    container_name: retail-microservice
+    ports:
+      - "8080:8080"
+    volumes:
+      # Volumen para que la BD H2 persista si reiniciamos el contenedor
+      - retail-data:/app/data
+    environment:
+      # Configuramos H2 para guardar en archivo físico y no en memoria volatil
+      - SPRING_DATASOURCE_URL=jdbc:h2:file:/app/data/retaildb;DB_CLOSE_DELAY=-1
+
+volumes:
+  retail-data:
