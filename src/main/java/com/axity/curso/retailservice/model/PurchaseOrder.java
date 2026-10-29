@@ -19,6 +19,9 @@ public class PurchaseOrder {
     @Column(nullable = false, unique = true)
     private String orderNumber;
 
+    @Column(nullable = false)
+    private Boolean deleted = false;
+
     private String status;
     private Double totalAmount;
 }

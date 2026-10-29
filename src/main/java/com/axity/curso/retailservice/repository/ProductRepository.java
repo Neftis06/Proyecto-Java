@@ -1,5 +1,7 @@
 package com.axity.curso.retailservice.repository;
 
+import java.util.Optional;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import com.axity.curso.retailservice.model.Product;
@@ -14,4 +16,5 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     // Podemos agregar métodos personalizados usando la convención de nombres de Spring Data
     // Por ejemplo, buscar un producto por su SKU:
     Product findBySku(String sku);
+    Optional<Product> findByIdAndDeletedFalse(Long id);
 }
