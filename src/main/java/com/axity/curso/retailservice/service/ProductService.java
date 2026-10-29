@@ -1,6 +1,7 @@
 package com.axity.curso.retailservice.service;
 
 import com.axity.curso.retailservice.dto.ProductDTO;
+import com.axity.curso.retailservice.exception.ResourceNotFoundException;
 import com.axity.curso.retailservice.mapper.ProductMapper;
 import com.axity.curso.retailservice.model.Product;
 import com.axity.curso.retailservice.repository.ProductRepository;
@@ -27,7 +28,7 @@ public class ProductService {
 
     public ProductDTO getProductById(Long id) {
         Product product = productRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Producto no encontrado con ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Producto no encontrado con ID: " + id));
         return productMapper.toDTO(product);
     }
 
@@ -46,7 +47,7 @@ public class ProductService {
     public ProductDTO updateProduct(Long id, ProductDTO productDetails) {
         // Buscamos el producto asegurándonos de que exista y no esté borrado lógicamente
         Product existingProduct = productRepository.findByIdAndDeletedFalse(id)
-                .orElseThrow(() -> new RuntimeException("Producto no encontrado o está eliminado con ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Producto no encontrado o está eliminado con ID: " + id));
 
         // Actualizamos los campos permitidos (usualmente el SKU no se actualiza)
         existingProduct.setName(productDetails.getName());
@@ -66,7 +67,7 @@ public class ProductService {
     // --- BORRADO LÓGICO (SOFT DELETE) ---
     public void softDeleteProduct(Long id) {
         Product product = productRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Producto no encontrado con ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Producto no encontrado con ID: " + id));
         
         product.setDeleted(true); // Cambiamos la bandera en lugar de borrar
         productRepository.save(product);
@@ -75,7 +76,7 @@ public class ProductService {
     // --- BORRADO FÍSICO (HARD DELETE) ---
     public void hardDeleteProduct(Long id) {
         if (!productRepository.existsById(id)) {
-            throw new RuntimeException("Producto no encontrado con ID: " + id);
+            throw new ResourceNotFoundException("Producto no encontrado con ID: " + id);
         }
         productRepository.deleteById(id); // Elimina el registro por completo de la BD
     }
@@ -83,7 +84,7 @@ public class ProductService {
     // --- ACTUALIZACIÓN PARCIAL (PATCH) ---
     public ProductDTO patchProduct(Long id, ProductDTO productDetails) {
         Product existingProduct = productRepository.findByIdAndDeletedFalse(id)
-                .orElseThrow(() -> new RuntimeException("Producto no encontrado o está eliminado con ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Producto no encontrado o está eliminado con ID: " + id));
 
         // Solo actualizamos los campos que el usuario sí envió en el JSON (que no son nulos)
         if (productDetails.getName() != null) {
