@@ -8,7 +8,6 @@ import java.io.Serializable;
 
 /**
  * Data Transfer Object para la entidad Product.
- * @Data genera getters, setters, toString, equals y hashCode automáticamente.
  */
 @Data
 @NoArgsConstructor
@@ -20,6 +19,9 @@ public class ProductDTO implements Serializable {
     private Long id;
     private String sku;
     private String name;
+    private String description;
     private Double price;
+    private Integer stock;
+    private String category;
     private Boolean active;
 }
