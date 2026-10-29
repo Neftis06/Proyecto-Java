@@ -1,12 +1,14 @@
 package com.axity.curso.retailservice.service;
 
 import com.axity.curso.retailservice.dto.ProductDTO;
+import com.axity.curso.retailservice.exception.ResourceNotFoundException;
 import com.axity.curso.retailservice.mapper.ProductMapper;
 import com.axity.curso.retailservice.model.Product;
 import com.axity.curso.retailservice.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -17,6 +19,7 @@ public class ProductService {
     // Las dependencias deben ser 'final' para que Lombok genere el constructor
     private final ProductRepository productRepository;
     private final ProductMapper productMapper;
+    private final NotificationService notificationService;
 
     public List<ProductDTO> getAllProducts() {
         // Usamos la API Stream que acabas de dominar para transformar la lista completa
@@ -27,65 +30,45 @@ public class ProductService {
 
     public ProductDTO getProductById(Long id) {
         Product product = productRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Producto no encontrado con ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Producto no encontrado o está eliminado con ID: " + id));
         return productMapper.toDTO(product);
     }
 
+    // --- POST (Crear Producto) ---
     public ProductDTO createProduct(ProductDTO productDTO) {
-        // 1. Convertimos el DTO que llega a Entidad
         Product product = productMapper.toEntity(productDTO);
-        
-        // 2. Guardamos en base de datos
         Product savedProduct = productRepository.save(product);
-        
-        // 3. Devolvemos la Entidad guardada convertida de nuevo a DTO
+
+        // Tarea asíncrona: Notificar creación de producto en segundo plano
+        notificationService.notifyProductActionAsync("CREATE", savedProduct.getName());
+
         return productMapper.toDTO(savedProduct);
     }
 
-    // --- ACTUALIZAR (PUT) ---
+    // --- PUT (Actualización Completa) ---
     public ProductDTO updateProduct(Long id, ProductDTO productDetails) {
-        // Buscamos el producto asegurándonos de que exista y no esté borrado lógicamente
         Product existingProduct = productRepository.findByIdAndDeletedFalse(id)
-                .orElseThrow(() -> new RuntimeException("Producto no encontrado o está eliminado con ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Producto no encontrado con ID: " + id));
 
-        // Actualizamos los campos permitidos (usualmente el SKU no se actualiza)
         existingProduct.setName(productDetails.getName());
         existingProduct.setDescription(productDetails.getDescription());
-        
-        // CORRECCIÓN: Convertimos el Double del DTO a BigDecimal para la Entidad
-        existingProduct.setPrice(java.math.BigDecimal.valueOf(productDetails.getPrice()));
-        
+        existingProduct.setPrice(BigDecimal.valueOf(productDetails.getPrice()));
         existingProduct.setStock(productDetails.getStock());
         existingProduct.setCategory(productDetails.getCategory());
 
-        // Guardamos y retornamos el DTO actualizado
         Product updatedProduct = productRepository.save(existingProduct);
+
+        // Tarea asíncrona: Auditoría de actualización completa
+        notificationService.notifyProductActionAsync("PUT_UPDATE", updatedProduct.getName());
+
         return productMapper.toDTO(updatedProduct);
     }
 
-    // --- BORRADO LÓGICO (SOFT DELETE) ---
-    public void softDeleteProduct(Long id) {
-        Product product = productRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Producto no encontrado con ID: " + id));
-        
-        product.setDeleted(true); // Cambiamos la bandera en lugar de borrar
-        productRepository.save(product);
-    }
-
-    // --- BORRADO FÍSICO (HARD DELETE) ---
-    public void hardDeleteProduct(Long id) {
-        if (!productRepository.existsById(id)) {
-            throw new RuntimeException("Producto no encontrado con ID: " + id);
-        }
-        productRepository.deleteById(id); // Elimina el registro por completo de la BD
-    }
-
-    // --- ACTUALIZACIÓN PARCIAL (PATCH) ---
+    // --- PATCH (Actualización Parcial) ---
     public ProductDTO patchProduct(Long id, ProductDTO productDetails) {
         Product existingProduct = productRepository.findByIdAndDeletedFalse(id)
-                .orElseThrow(() -> new RuntimeException("Producto no encontrado o está eliminado con ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Producto no encontrado o está eliminado con ID: " + id));
 
-        // Solo actualizamos los campos que el usuario sí envió en el JSON (que no son nulos)
         if (productDetails.getName() != null) {
             existingProduct.setName(productDetails.getName());
         }
@@ -93,8 +76,7 @@ public class ProductService {
             existingProduct.setDescription(productDetails.getDescription());
         }
         if (productDetails.getPrice() != null) {
-            // Convertimos el Double a BigDecimal como hicimos en el PUT
-            existingProduct.setPrice(java.math.BigDecimal.valueOf(productDetails.getPrice()));
+            existingProduct.setPrice(BigDecimal.valueOf(productDetails.getPrice()));
         }
         if (productDetails.getStock() != null) {
             existingProduct.setStock(productDetails.getStock());
@@ -103,7 +85,34 @@ public class ProductService {
             existingProduct.setCategory(productDetails.getCategory());
         }
 
-        Product updatedProduct = productRepository.save(existingProduct);
+        Product updatedProduct = productRepository.save(updatedProduct = productRepository.save(existingProduct));
+
+        // Tarea asíncrona: Auditoría de actualización parcial
+        notificationService.notifyProductActionAsync("PATCH_UPDATE", updatedProduct.getName());
+
         return productMapper.toDTO(updatedProduct);
+    }
+
+    // --- DELETE (Borrado Lógico) ---
+    public void softDeleteProduct(Long id) {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Producto no encontrado con ID: " + id));
+
+        product.setDeleted(true);
+        productRepository.save(product);
+
+        // Tarea asíncrona: Notificar baja lógica
+        notificationService.notifyProductActionAsync("SOFT_DELETE", product.getName());
+    }
+
+    // --- DELETE (Borrado Físico) ---
+    public void hardDeleteProduct(Long id) {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Producto no encontrado con ID: " + id));
+
+        productRepository.deleteById(id);
+
+        // Tarea asíncrona: Notificar purga definitiva
+        notificationService.notifyProductActionAsync("HARD_DELETE_PURGE", product.getName());
     }
 }
